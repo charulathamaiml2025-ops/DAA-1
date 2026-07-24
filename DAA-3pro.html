@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MST Visualizer - Kruskal & Prim</title>
+
+<style>
+body{
+    font-family:Arial,Helvetica,sans-serif;
+    background:#f4f6f9;
+    margin:0;
+}
+.container{
+    width:90%;
+    max-width:1100px;
+    margin:30px auto;
+    background:#fff;
+    padding:25px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+h1{
+    text-align:center;
+    color:#1565C0;
+}
+textarea{
+    width:100%;
+    height:220px;
+    padding:10px;
+    font-size:15px;
+    border-radius:6px;
+    border:1px solid #ccc;
+}
+button{
+    padding:12px 20px;
+    margin:10px 5px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    color:white;
+    font-size:16px;
+}
+.kruskal{
+    background:#1565C0;
+}
+.prim{
+    background:#2E7D32;
+}
+.result{
+    margin-top:20px;
+    padding:15px;
+    background:#E3F2FD;
+    border-radius:8px;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+}
+table th,table td{
+    border:1px solid #ccc;
+    padding:8px;
+    text-align:center;
+}
+table th{
+    background:#1565C0;
+    color:white;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Minimum Spanning Tree Visualizer</h1>
+
+<p><b>Enter one edge per line (u v weight)</b></p>
+
+<textarea id="edges">
+0 1 7
+0 3 5
+1 2 8
+1 3 9
+1 4 7
+2 4 5
+3 4 15
+3 5 6
+4 5 8
+4 6 9
+5 6 11
+</textarea>
+
+<button class="kruskal" onclick="runKruskal()">Run Kruskal</button>
+
+<button class="prim" onclick="runPrim()">Run Prim</button>
+
+<div id="output"></div>
+
+</div>
+
+<script>
+
+// ---------- Union Find ----------
+class UnionFind{
+
+constructor(n){
+this.parent=[...Array(n).keys()];
+this.rank=new Array(n).fill(0);
+}
+
+find(x){
+
+if(this.parent[x]!=x)
+
+this.parent[x]=this.find(this.parent[x]);
+
+return this.parent[x];
+
+}
+
+union(x,y){
+
+let rx=this.find(x);
+let ry=this.find(y);
+
+if(rx==ry) return false;
+
+if(this.rank[rx]<this.rank[ry]){
+
+let t=rx;
+rx=ry;
+ry=t;
+
+}
+
+this.parent[ry]=rx;
+
+if(this.rank[rx]==this.rank[ry])
+
+this.rank[rx]++;
+
+return true;
+
+}
+
+}
+
+// ---------- Read Graph ----------
+function getEdges(){
+
+let lines=document.getElementById("edges")
+.value
+.trim()
+.split("\n");
+
+let edges=[];
+
+let maxNode=0;
+
+lines.forEach(line=>{
+
+let [u,v,w]=line.trim().split(/\s+/).map(Number);
+
+edges.push({u,v,w});
+
+maxNode=Math.max(maxNode,u,v);
+
+});
+
+return {edges,n:maxNode+1};
+
+}
+
+// ---------- Kruskal ----------
+function runKruskal(){
+
+let data=getEdges();
+
+let edges=[...data.edges];
+
+edges.sort((a,b)=>a.w-b.w);
+
+let uf=new UnionFind(data.n);
+
+let mst=[];
+
+let cost=0;
+
+edges.forEach(e=>{
+
+if(uf.union(e.u,e.v)){
+
+mst.push(e);
+
+cost+=e.w;
+
+}
+
+});
+
+display("Kruskal",mst,cost);
+
+}
+
+// ---------- Prim ----------
+function runPrim(){
+
+let data=getEdges();
+
+let adj={};
+
+data.edges.forEach(e=>{
+
+if(!adj[e.u]) adj[e.u]=[];
+
+if(!adj[e.v]) adj[e.v]=[];
+
+adj[e.u].push({v:e.v,w:e.w});
+
+adj[e.v].push({v:e.u,w:e.w});
+
+});
+
+let visited=new Array(data.n).fill(false);
+
+let mst=[];
+
+let cost=0;
+
+visited[0]=true;
+
+while(mst.length<data.n-1){
+
+let minEdge=null;
+
+for(let u=0;u<data.n;u++){
+
+if(visited[u]){
+
+(adj[u]||[]).forEach(e=>{
+
+if(!visited[e.v]){
+
+if(minEdge==null || e.w<minEdge.w)
+
+minEdge={u:u,v:e.v,w:e.w};
+
+}
+
+});
+
+}
+
+}
+
+if(minEdge==null) break;
+
+visited[minEdge.v]=true;
+
+mst.push(minEdge);
+
+cost+=minEdge.w;
+
+}
+
+display("Prim",mst,cost);
+
+}
+
+// ---------- Display ----------
+function display(name,mst,cost){
+
+let html=`
+<div class="result">
+
+<h2>${name}'s Algorithm</h2>
+
+<table>
+
+<tr>
+
+<th>Edge</th>
+
+<th>Weight</th>
+
+</tr>
+`;
+
+mst.forEach(e=>{
+
+html+=`
+<tr>
+
+<td>${e.u} - ${e.v}</td>
+
+<td>${e.w}</td>
+
+</tr>
+`;
+
+});
+
+html+=`
+
+</table>
+
+<h3>Total MST Cost = ${cost}</h3>
+
+</div>
+`;
+
+document.getElementById("output").innerHTML=html;
+
+}
+
+</script>
+
+</body>
+</html>
